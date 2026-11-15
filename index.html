@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microstructure Academy — Order Books, Market Making & Execution</title>
+    <meta name="description" content="A comprehensive, interactive guide to market microstructure: order book dynamics, market making, price discovery, execution algorithms, market impact, and regulation.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <style>
+        /* ========================================
+           CSS CUSTOM PROPERTIES
+           ======================================== */
+        :root {
+            /* Background & surfaces */
+            --bg: #05080a;
+            --bg-secondary: #0a0e12;
+            --surface: #0f1419;
+            --surface-hover: #161d24;
+            --surface-border: #1e2830;
+            --surface-elevated: #1a2028;
+
+            /* Accent — Rose / Hot Pink */
+            --accent: #f43f5e;
+            --accent-bright: #fb7185;
+            --accent-dim: #e11d48;
+            --accent-dark: #9f1239;
+            --accent-glow: rgba(244, 63, 94, 0.15);
+            --accent-glow-strong: rgba(244, 63, 94, 0.30);
+
+            /* Secondary accent — cool cyan for contrast */
+            --secondary: #06b6d4;
+            --secondary-dim: #0891b2;
+
+            /* Text */
+            --text-primary: #e8edf2;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --text-accent: #fda4af;
+
+            /* Status colors */
+            --green: #22c55e;
+            --green-dim: #15803d;
+            --yellow: #eab308;
+            --blue: #3b82f6;
+
+            /* Fonts */
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+            /* Spacing */
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-lg: 16px;
+        }
+
+        /* ========================================
+           RESET & BASE
+           ======================================== */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* ========================================
+           ANIMATED BACKGROUND — ORDER FLOW STREAM
+           ======================================== */
+        .bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Static fallback grid pattern */
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(244, 63, 94, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(244, 63, 94, 0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        /* Top glow */
+        .bg-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(ellipse, rgba(244, 63, 94, 0.08) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ========================================
+           HEADER
+           ======================================== */
+        .header {
+            position: relative;
+            z-index: 10;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .header-inner {
+            position: relative;
+            padding: 56px 32px 48px;
+            text-align: center;
+            background: linear-gradient(180deg,
+                rgba(244, 63, 94, 0.08) 0%,
+                rgba(244, 63, 94, 0.03) 50%,
+                transparent 100%
+            );
+            border-bottom: 1px solid rgba(244, 63, 94, 0.12);
+        }
+
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(244, 63, 94, 0.10);
+            border: 1px solid rgba(244, 63, 94, 0.20);
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--accent-bright);
+            margin-bottom: 24px;
+        }
+
+        .header-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .header h1 {
+            font-size: clamp(2.2rem, 5vw, 3.4rem);
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            line-height: 1.15;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #ffffff 0%, #fda4af 50%, var(--accent-bright) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 680px;
+            margin: 0 auto 28px;
+            line-height: 1.7;
+            font-weight: 400;
+        }
+
+        .header-subtitle strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .stat-divider {
+            width: 1px;
+            height: 40px;
+            background: var(--surface-border);
+            align-self: center;
+        }
+
+        /* ========================================
+           PROGRESS BAR
+           ======================================== */
+        .progress-section {
+            position: relative;
+            z-index: 10;
+            max-width: 900px;
+            margin: -20px auto 0;
+            padding: 0 24px;
+        }
+
+        .progress-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .progress-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .progress-bar-track {
+            flex: 1;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 100px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-dim), var(--accent), var(--accent-bright));
+            border-radius: 100px;
+            transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+        }
+
+        .progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            background: var(--accent-bright);
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(244, 63, 94, 0.5);
+        }
+
+        .progress-bar-fill.zero::after {
+            display: none;
+        }
+
+        .progress-percent {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--accent-bright);
+            min-width: 42px;
+            text-align: right;
+        }
+
+        /* ========================================
+           MAIN CONTENT
+           ======================================== */
+        .main {
+            position: relative;
+            z-index: 10;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 48px 24px 80px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .section-header h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+        }
+
+        .section-header .line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--surface-border), transparent);
+        }
+
+        .section-header .count {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            padding: 4px 12px;
+            border-radius: 100px;
+        }
+
+        /* ========================================
+           MODULE CARDS
+           ======================================== */
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .module-card {
+            position: relative;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius);
+            padding: 28px 24px 24px;
+            transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-dim), var(--accent), var(--accent-bright));
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+
+        .module-card:hover {
+            border-color: rgba(244, 63, 94, 0.3);
+            background: var(--surface-hover);
+            transform: translateY(-4px);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(244, 63, 94, 0.1),
+                0 4px 20px rgba(244, 63, 94, 0.05);
+        }
+
+        .module-card:hover::before {
+            opacity: 1;
+        }
+
+        .module-card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .module-number {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--accent);
+            background: var(--accent-glow);
+            border: 1px solid rgba(244, 63, 94, 0.15);
+            padding: 4px 10px;
+            border-radius: 6px;
+            letter-spacing: 1px;
+        }
+
+        .module-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .module-status.locked {
+            color: var(--text-muted);
+        }
+
+        .module-status.in-progress {
+            color: var(--secondary);
+        }
+
+        .module-status.complete {
+            color: var(--green);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .module-status.in-progress .status-dot {
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+
+        .module-icon {
+            font-size: 1.8rem;
+            margin-bottom: 12px;
+            display: block;
+            filter: drop-shadow(0 2px 8px rgba(244, 63, 94, 0.2));
+        }
+
+        .module-card h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .module-card p {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.65;
+            flex: 1;
+        }
+
+        .module-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--surface-border);
+        }
+
+        .tag {
+            font-size: 0.68rem;
+            font-weight: 500;
+            padding: 3px 10px;
+            border-radius: 100px;
+            background: rgba(244, 63, 94, 0.06);
+            color: var(--text-muted);
+            border: 1px solid rgba(244, 63, 94, 0.08);
+            letter-spacing: 0.3px;
+        }
+
+        .module-card:hover .tag {
+            background: rgba(244, 63, 94, 0.10);
+            color: var(--text-secondary);
+        }
+
+        /* ========================================
+           KEY EQUATIONS SECTION
+           ======================================== */
+        .equations-section {
+            margin-top: 56px;
+        }
+
+        .concept-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .concept-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .concept-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--accent);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .concept-card:hover,
+        .concept-card.active {
+            border-color: rgba(244, 63, 94, 0.3);
+            background: var(--surface-hover);
+        }
+
+        .concept-card:hover::after,
+        .concept-card.active::after {
+            transform: scaleX(1);
+        }
+
+        .concept-icon {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .concept-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .concept-formula {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--accent-bright);
+            margin-bottom: 8px;
+        }
+
+        .concept-expand-hint {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .chevron {
+            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+
+        .concept-card.active .chevron {
+            transform: rotate(180deg);
+        }
+
+        /* Equation Drawer */
+        .equation-drawer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .equation-drawer.open {
+            max-height: 2000px;
+        }
+
+        .equation-pane {
+            display: none;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius);
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        .equation-pane.active {
+            display: block;
+        }
+
+        .eq-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 24px 24px 16px;
+            border-bottom: 1px solid var(--surface-border);
+            gap: 16px;
+        }
+
+        .eq-header-left {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .eq-title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .eq-badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 3px 10px;
+            border-radius: 100px;
+            background: var(--accent-glow);
+            color: var(--accent-bright);
+            border: 1px solid rgba(244, 63, 94, 0.15);
+        }
+
+        .eq-title-row h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .eq-latex-display {
+            font-size: 1.05rem;
+            color: var(--text-accent);
+            overflow-x: auto;
+        }
+
+        .eq-close-btn {
+            background: none;
+            border: 1px solid var(--surface-border);
+            color: var(--text-muted);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .eq-close-btn:hover {
+            background: var(--surface-hover);
+            color: var(--text-primary);
+            border-color: var(--accent);
+        }
+
+        .eq-body-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+        }
+
+        .eq-column {
+            padding: 20px 24px;
+            border-right: 1px solid var(--surface-border);
+        }
+
+        .eq-column:last-child {
+            border-right: none;
+        }
+
+        .eq-col-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-bright);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .eq-col-content {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .eq-col-content ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .eq-col-content li {
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(30, 40, 48, 0.5);
+        }
+
+        .eq-col-content li:last-child {
+            border-bottom: none;
+        }
+
+        .eq-col-content strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* ========================================
+           FOOTER
+           ======================================== */
+        .footer {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 40px 24px;
+            border-top: 1px solid var(--surface-border);
+        }
+
+        .footer p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .footer a {
+            color: var(--accent-bright);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .footer a:hover {
+            color: var(--accent);
+        }
+
+        /* ========================================
+           SCROLLBAR
+           ======================================== */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--surface-border);
+            border-radius: 100px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* ========================================
+           MOBILE RESPONSIVE
+           ======================================== */
+        @media (max-width: 700px) {
+            .header-inner {
+                padding: 40px 16px 36px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .stats-bar {
+                gap: 16px;
+            }
+
+            .stat-divider {
+                height: 28px;
+            }
+
+            .modules-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .concept-cards-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .eq-body-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .eq-column {
+                border-right: none;
+                border-bottom: 1px solid var(--surface-border);
+            }
+
+            .eq-column:last-child {
+                border-bottom: none;
+            }
+
+            .progress-card {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .main {
+                padding: 32px 16px 60px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .concept-cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background layers -->
+    <canvas class="bg-canvas" id="bgCanvas"></canvas>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <!-- ========== HEADER ========== -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="header-badge">
+                <span class="dot"></span>
+                Trading & Execution
+            </div>
+            <h1>Microstructure Academy</h1>
+            <p class="header-subtitle">
+                A rigorous, interactive guide to <strong>order book dynamics</strong>, <strong>market making</strong>,
+                <strong>price discovery</strong>, execution algorithms, and market impact — from theory to the trading floor.
+            </p>
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <span class="stat-value">8</span>
+                    <span class="stat-label">Modules</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-value" id="totalCharts">20+</span>
+                    <span class="stat-label">Interactive Charts</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-value" id="totalTabs">~28</span>
+                    <span class="stat-label">Deep-Dive Tabs</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-value">🟡</span>
+                    <span class="stat-label">Balanced</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========== PROGRESS ========== -->
+    <section class="progress-section">
+        <div class="progress-card">
+            <span class="progress-label">Overall Progress</span>
+            <div class="progress-bar-track">
+                <div class="progress-bar-fill zero" id="progressFill" style="width: 0%"></div>
+            </div>
+            <span class="progress-percent" id="progressPercent">0%</span>
+        </div>
+    </section>
+
+    <!-- ========== MODULE CARDS ========== -->
+    <main class="main">
+        <div class="section-header">
+            <h2>Modules</h2>
+            <div class="line"></div>
+            <span class="count">0 / 8 complete</span>
+        </div>
+
+        <div class="modules-grid">
+            <!-- Module 01 -->
+            <a class="module-card animate-in" href="01_Market_Structure.html" id="mod-01">
+                <div class="module-card-top">
+                    <span class="module-number">MODULE 01</span>
+                    <span class="module-status locked"><span class="status-dot"></span> Coming Soon</span>
+                </div>
+                <span class="module-icon">🏛️</span>
+                <h3>Market Structure</h3>
+                <p>Exchanges vs OTC, order types (market, limit, stop, iceberg), matching engine mechanics, dark pools vs lit markets, venue fragmentation, and the evolution from open outcry to electronic trading.</p>
+                <div class="module-tags">
+                    <span class="tag">Exchanges & OTC</span>
+                    <span class="tag">Order Types</span>
+                    <span class="tag">Matching Engines</span>
+                    <span class="tag">Dark Pools</span>
+                </div>
+            </a>
+
+            <!-- Module 02 -->
+            <a class="module-card animate-in" href="02_Order_Book.html" id="mod-02">
+                <div class="module-card-top">
+                    <span class="module-number">MODULE 02</span>
+                    <span class="module-status locked"><span class="status-dot"></span> Coming Soon</span>
+                </div>
+                <span class="module-icon">📊</span>
+                <h3>The Limit Order Book</h3>
+                <p>LOB mechanics, bid-ask spread formation, depth and resilience, queue priority (price-time, pro-rata), order book imbalance signals, and L2/L3 data interpretation.</p>
+                <div class="module-tags">
+                    <span class="tag">LOB Mechanics</span>
+                    <span class="tag">Bid-Ask Spread</span>
+                    <span class="tag">Queue Priority</span>
+                    <span class="tag">Order Imbalance</span>
+                </div>
+            </a>
+
+            <!-- Module 03 -->
+            <a class="module-card animate-in" href="03_Market_Making.html" id="mod-03">
+                <div class="module-card-top">
+                    <span class="module-number">MODULE 03</span>
+                    <span class="module-status locked"><span class="status-dot"></span> Coming Soon</span>
+                </div>
+                <span class="module-icon">⚖️</span>
+                <h3>Market Making</h3>
+                <p>Bid-ask dynamics and spread decomposition, inventory risk management, adverse selection (Glosten-Milgrom), the Avellaneda-Stoikov optimal quoting framework, and P&L attribution for market makers.</p>
+                <div class="module-tags">
+                    <span class="tag">Inventory Risk</span>
+                    <span class="tag">Adverse Selection</span>
+                    <span class="tag">Avellaneda-Stoikov</span>
+                    <span class="tag">Spread P&L</span>
+                </div>
+            </a>
+
+            <!-- Module 04 -->
+            <a class="module-card animate-in" href="04_Price_Discovery.html" id="mod-04">
+                <div class="module-card-top">
+                    <span class="module-number">MODULE 04</span>
+                    <span class="module-status locked"><span class="status-dot"></span> Coming Soon</span>
+                </div>
+                <span class="module-icon">🔍</span>
+                <h3>Price Discovery</h3>
+                <p>Information content of order flow, Kyle's lambda and price impact, informed vs noise traders, PIN (probability of informed trading), Hasbrouck's information share, and the efficient price.</p>
+                <div class="module-tags">
+                    <span class="tag">Kyle's Lambda</span>
+                    <span class="tag">Order Flow Toxicity</span>
+                    <span class="tag">PIN Model</span>
+                    <span class="tag">Info Share</span>
+                </div>
+            </a>
+
+            <!-- Module 05 -->
+            <a class="module-card animate-in" href="05_Execution.html" id="mod-05">
+                <div class="module-card-top">
+                    <span class="module-number">MODULE 05</span>
+                    <span class="module-status locked"><span class="status-dot"></span> Coming Soon</span>
+                </div>
+                <span class="module-icon">⚡</span>
+                <h3>Execution Algorithms</h3>
+                <p>TWAP, VWAP, and participation algorithms, implementation shortfall (IS) benchmarks, optimal execution theory (Almgren-Chriss), smart order routing, and algo selection frameworks.</p>
+                <div class="module-tags">
+                    <span class="tag">TWAP / VWAP</span>
+                    <span class="tag">Impl. Shortfall</span>
+                    <span class="tag">Algo Selection</span>
+                    <span class="tag">Smart Routing</span>
+                </div>
+            </a>
+
+            <!-- Module 06 -->
+            <a class="module-card animate-in" href="06_Market_Impact.html" id="mod-06">
+                <div class="module-card-top">
+                    <span class="module-number">MODULE 06</span>
+                    <span class="module-status locked"><span class="status-dot"></span> Coming Soon</span>
+                </div>
+                <span class="module-icon">💥</span>
+                <h3>Market Impact</h3>
+                <p>Temporary vs permanent price impact, the Almgren-Chriss model, square-root impact law, slippage estimation, cost-risk optimization, and the urgency-impact frontier for large orders.</p>
+                <div class="module-tags">
+                    <span class="tag">Temp vs Perm Impact</span>
+                    <span class="tag">Almgren-Chriss</span>
+                    <span class="tag">√n Impact Law</span>
+                    <span class="tag">Slippage</span>
+                </div>
+            </a>
+
+            <!-- Module 07 -->
+            <a class="module-card animate-in" href="07_Regulation.html" id="mod-07">
+                <div class="module-card-top">
+                    <span class="module-number">MODULE 07</span>
+                    <span class="module-status locked"><span class="status-dot"></span> Coming Soon</span>
+                </div>
+                <span class="module-icon">📜</span>
+                <h3>Regulation & Market Design</h3>
+                <p>MiFID II / MiFIR transparency regime, Reg NMS and order protection, best execution obligations, tick size regimes, circuit breakers, and the maker-taker fee model debate.</p>
+                <div class="module-tags">
+                    <span class="tag">MiFID II</span>
+                    <span class="tag">Reg NMS</span>
+                    <span class="tag">Best Execution</span>
+                    <span class="tag">Tick Size</span>
+                </div>
+            </a>
+
+            <!-- Module 08 -->
+            <a class="module-card animate-in" href="08_Microstructure_Interview.html" id="mod-08">
+                <div class="module-card-top">
+                    <span class="module-number">MODULE 08</span>
+                    <span class="module-status locked"><span class="status-dot"></span> Coming Soon</span>
+                </div>
+                <span class="module-icon">🎯</span>
+                <h3>Interview Cheatsheet</h3>
+                <p>Key Q&A covering all modules: market making scenarios, order book exercises, spread decomposition, impact estimation, regulation trade-offs, and common e-trading desk interview questions.</p>
+                <div class="module-tags">
+                    <span class="tag">Interview Q&A</span>
+                    <span class="tag">MM Scenarios</span>
+                    <span class="tag">LOB Exercises</span>
+                    <span class="tag">Quick Ref</span>
+                </div>
+            </a>
+        </div>
+
+        <!-- ========== KEY EQUATIONS ========== -->
+        <div class="equations-section">
+            <div class="section-header">
+                <h2>Core Equations</h2>
+                <div class="line"></div>
+                <span class="count">Click to explore</span>
+            </div>
+
+            <div class="concept-cards-grid">
+                <div class="concept-card" data-eq="spread" tabindex="0" role="button" aria-expanded="false">
+                    <span class="concept-icon">📊</span>
+                    <div class="concept-label">Bid-Ask Spread Decomposition</div>
+                    <div class="concept-formula">S = Adverse Sel. + Inventory + Order Proc.</div>
+                    <div class="concept-expand-hint">Explore math & intuition <span class="chevron">▾</span></div>
+                </div>
+
+                <div class="concept-card" data-eq="kyle" tabindex="0" role="button" aria-expanded="false">
+                    <span class="concept-icon">🔍</span>
+                    <div class="concept-label">Kyle's Lambda</div>
+                    <div class="concept-formula">ΔP = λ · OrderFlow</div>
+                    <div class="concept-expand-hint">Explore math & intuition <span class="chevron">▾</span></div>
+                </div>
+
+                <div class="concept-card" data-eq="as" tabindex="0" role="button" aria-expanded="false">
+                    <span class="concept-icon">⚖️</span>
+                    <div class="concept-label">Avellaneda-Stoikov</div>
+                    <div class="concept-formula">r(s,q,t) = s − q·γ·σ²·(T−t)</div>
+                    <div class="concept-expand-hint">Explore math & intuition <span class="chevron">▾</span></div>
+                </div>
+
+                <div class="concept-card" data-eq="vwap" tabindex="0" role="button" aria-expanded="false">
+                    <span class="concept-icon">⚡</span>
+                    <div class="concept-label">VWAP Benchmark</div>
+                    <div class="concept-formula">VWAP = Σ(Pᵢ·Vᵢ) / Σ(Vᵢ)</div>
+                    <div class="concept-expand-hint">Explore math & intuition <span class="chevron">▾</span></div>
+                </div>
+
+                <div class="concept-card" data-eq="ac" tabindex="0" role="button" aria-expanded="false">
+                    <span class="concept-icon">💥</span>
+                    <div class="concept-label">Almgren-Chriss</div>
+                    <div class="concept-formula">min E[Cost] + λ·Var[Cost]</div>
+                    <div class="concept-expand-hint">Explore math & intuition <span class="chevron">▾</span></div>
+                </div>
+            </div>
+
+            <!-- EXPANDABLE DRAWER -->
+            <div class="equation-drawer" id="equationDrawer">
+                <!-- 1. Bid-Ask Spread Decomposition -->
+                <div class="equation-pane" id="pane-spread">
+                    <div class="eq-header">
+                        <div class="eq-header-left">
+                            <div class="eq-title-row">
+                                <span class="eq-badge">Market Microstructure</span>
+                                <h3>Bid-Ask Spread Decomposition</h3>
+                            </div>
+                            <div class="eq-latex-display">$$S = \underbrace{\alpha}_{\text{adverse selection}} + \underbrace{\beta}_{\text{inventory holding}} + \underbrace{\gamma}_{\text{order processing}}$$</div>
+                        </div>
+                        <button class="eq-close-btn" aria-label="Close equation breakdown" onclick="closeEquationDrawer()">✕</button>
+                    </div>
+                    <div class="eq-body-grid">
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>📐</span> Parameter Anatomy</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>$\alpha$ (Adverse Selection):</strong> Compensation for trading against informed traders. The larger the information asymmetry, the wider this component. Estimated via trade-to-trade price changes.</li>
+                                    <li><strong>$\beta$ (Inventory Holding):</strong> Compensation for the risk of holding unwanted inventory. Depends on volatility and the dealer's risk aversion. Shrinks with hedging capability.</li>
+                                    <li><strong>$\gamma$ (Order Processing):</strong> Fixed costs of providing liquidity — exchange fees, technology, clearing, settlement, and the dealer's required return on capital.</li>
+                                    <li><strong>$S$ (Total Spread):</strong> The observable quoted spread = ask − bid. In competitive markets, $S$ converges toward the sum of its components.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>💡</span> Trading & Economic Intuition</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>Adverse Selection Dominates:</strong> In most equity markets, adverse selection accounts for 40–60% of the spread. This is why spreads widen around news events — the probability of facing an informed trader spikes.</li>
+                                    <li><strong>Electronification Compressed $\gamma$:</strong> Order processing costs have dropped ~95% since the 1990s. The remaining spread is now mostly adverse selection and inventory risk.</li>
+                                    <li><strong>Cross-Asset Variation:</strong> Liquid large-cap equities: spread ~1–3 bps. IG corporate bonds: 5–20 bps. EM sovereign: 20–100+ bps. The mix of components differs dramatically by asset class.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>🎯</span> Desk & Interview Application</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>Glosten-Milgrom (1985):</strong> Formalized adverse selection: the market maker sets bid/ask to break even conditional on the trade direction revealing information. Spread = 2 × probability of informed × (true value − expected value).</li>
+                                    <li><strong>Measuring Components:</strong> Roll (1984) implied spread from autocovariance. Huang-Stoll (1997) three-way decomposition using trade indicators. Modern approaches use high-frequency data.</li>
+                                    <li><strong>Practical Impact:</strong> Understanding which component drives the spread tells you how to reduce execution costs — dark pools reduce $\alpha$, DMA reduces $\gamma$, hedging reduces $\beta$.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Kyle's Lambda -->
+                <div class="equation-pane" id="pane-kyle">
+                    <div class="eq-header">
+                        <div class="eq-header-left">
+                            <div class="eq-title-row">
+                                <span class="eq-badge">Price Discovery</span>
+                                <h3>Kyle's Lambda — Price Impact of Order Flow</h3>
+                            </div>
+                            <div class="eq-latex-display">$$\Delta p = \lambda \cdot \Delta x + \varepsilon \qquad \text{where} \quad \lambda = \frac{\sigma_v}{2\sigma_u} = \frac{1}{2} \cdot \frac{\text{info precision}}{\text{noise volume}}$$</div>
+                        </div>
+                        <button class="eq-close-btn" aria-label="Close equation breakdown" onclick="closeEquationDrawer()">✕</button>
+                    </div>
+                    <div class="eq-body-grid">
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>📐</span> Parameter Anatomy</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>$\lambda$ (Kyle's Lambda):</strong> The market's price sensitivity to net order flow. Measured in price change per unit of signed volume. Higher $\lambda$ = less liquid, more information in each trade.</li>
+                                    <li><strong>$\Delta x$ (Net Order Flow):</strong> Signed volume over the measurement interval. Buys are positive, sells negative. Aggregates both informed and noise trading.</li>
+                                    <li><strong>$\sigma_v$ (Info Precision):</strong> Variance of the asset's fundamental value. More uncertainty = more opportunity for informed traders = higher $\lambda$.</li>
+                                    <li><strong>$\sigma_u$ (Noise Volume):</strong> Variance of noise trading. More noise traders provide camouflage for the informed, increasing depth and reducing $\lambda$.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>💡</span> Trading & Economic Intuition</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>The Informed Trader's Dilemma:</strong> In Kyle (1985), the insider trades gradually to avoid revealing information too fast. The optimal strategy trades at a rate proportional to noise volume — camouflaging in the flow.</li>
+                                    <li><strong>Lambda as Illiquidity Measure:</strong> $\lambda$ captures the cost of demanding immediacy. A stock with $\lambda$ = 0.5 bps per \$1M means a \$10M buy order moves the price ~5 bps. This is the permanent component.</li>
+                                    <li><strong>Cross-Sectional Patterns:</strong> $\lambda$ is inversely related to market cap and trading volume, and positively related to volatility and information asymmetry. Small-cap / pre-earnings stocks have high $\lambda$.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>🎯</span> Desk & Interview Application</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>Estimating $\lambda$:</strong> Regress 5-minute price changes on signed order flow (tick rule or Lee-Ready). The slope coefficient is $\hat{\lambda}$. Typical values: 1–10 bps per \$1M for large-cap US equities.</li>
+                                    <li><strong>VPIN (Volume-Synchronized PIN):</strong> Real-time toxicity metric based on Kyle's framework. Measures the imbalance of buy vs sell volume in volume-clock bars. Spiked dramatically before the 2010 Flash Crash.</li>
+                                    <li><strong>Interview Favorite:</strong> "If $\lambda$ doubles overnight for a stock you trade, what changed and what do you do?" — Could signal informed flow, reduced noise trading, or an event. Widen quotes, reduce position size, investigate.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Avellaneda-Stoikov -->
+                <div class="equation-pane" id="pane-as">
+                    <div class="eq-header">
+                        <div class="eq-header-left">
+                            <div class="eq-title-row">
+                                <span class="eq-badge">Optimal Market Making</span>
+                                <h3>Avellaneda-Stoikov Reservation Price & Spread</h3>
+                            </div>
+                            <div class="eq-latex-display">$$r(s, q, t) = s - q \cdot \gamma \cdot \sigma^2 (T - t) \qquad \delta^{a,b} = \gamma \sigma^2 (T-t) + \frac{2}{\gamma} \ln\!\left(1 + \frac{\gamma}{k}\right)$$</div>
+                        </div>
+                        <button class="eq-close-btn" aria-label="Close equation breakdown" onclick="closeEquationDrawer()">✕</button>
+                    </div>
+                    <div class="eq-body-grid">
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>📐</span> Parameter Anatomy</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>$r$ (Reservation Price):</strong> The market maker's indifference price — where they'd be willing to trade given their current inventory $q$. It's the mid-price adjusted for inventory risk.</li>
+                                    <li><strong>$s$ (Mid-Price):</strong> The current fair value / mid-market price of the asset. The starting point before inventory adjustment.</li>
+                                    <li><strong>$q$ (Inventory):</strong> Current position. Positive = long, negative = short. The larger $|q|$, the more the reservation price deviates from mid to encourage inventory-reducing trades.</li>
+                                    <li><strong>$\gamma$ (Risk Aversion):</strong> Controls how aggressively the MM skews quotes to manage inventory. High $\gamma$ = tighter risk control, more skew, narrower effective position limits.</li>
+                                    <li><strong>$\sigma^2(T-t)$ (Remaining Risk):</strong> Variance of price over the remaining trading horizon. As $T-t \to 0$, inventory risk vanishes and quotes center on mid.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>💡</span> Trading & Economic Intuition</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>Inventory Skew:</strong> If the MM is long ($q > 0$), the reservation price drops below mid — they want to sell. Their ask becomes more attractive (tighter) and their bid widens. This is exactly how real market makers manage risk.</li>
+                                    <li><strong>Spread = Risk Premium + Adverse Selection:</strong> The optimal spread $\delta^{a}+\delta^{b}$ increases with volatility ($\sigma$), risk aversion ($\gamma$), and time remaining $(T-t)$. The $k$ parameter captures order arrival intensity.</li>
+                                    <li><strong>End-of-Day Effect:</strong> As $T-t \to 0$, the inventory penalty vanishes. This is why market makers become more aggressive near close — there's less time for adverse price moves.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>🎯</span> Desk & Interview Application</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>Practical Implementation:</strong> Real MM algorithms use calibrated versions of A-S with additional features: multiple assets, correlated inventory, regime-dependent $\gamma$, and adverse selection filters on incoming flow.</li>
+                                    <li><strong>Parameter Calibration:</strong> $\sigma$ from recent realized vol, $k$ from Poisson arrival rates of limit orders, $\gamma$ set by risk limits. The art is in choosing $\gamma$ — too low and you blow up on inventory, too high and you never trade.</li>
+                                    <li><strong>Interview Question:</strong> "You're making a market in stock X, you're now long 5,000 shares and vol just doubled. Walk me through your quote adjustment." — Skew bid up (widen ask), reduce overall width by less than the vol increase, and consider hedging.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. VWAP -->
+                <div class="equation-pane" id="pane-vwap">
+                    <div class="eq-header">
+                        <div class="eq-header-left">
+                            <div class="eq-title-row">
+                                <span class="eq-badge">Execution Benchmark</span>
+                                <h3>Volume-Weighted Average Price (VWAP)</h3>
+                            </div>
+                            <div class="eq-latex-display">$$\text{VWAP} = \frac{\sum_{i=1}^{N} P_i \cdot V_i}{\sum_{i=1}^{N} V_i} \qquad \text{Slippage} = P_{\text{exec}} - \text{VWAP}_{\text{benchmark}}$$</div>
+                        </div>
+                        <button class="eq-close-btn" aria-label="Close equation breakdown" onclick="closeEquationDrawer()">✕</button>
+                    </div>
+                    <div class="eq-body-grid">
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>📐</span> Parameter Anatomy</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>$P_i$ (Trade Price):</strong> The price of the $i$-th trade or time bucket. VWAP weights each price by its associated volume, giving more importance to prices where more shares traded.</li>
+                                    <li><strong>$V_i$ (Trade Volume):</strong> The number of shares/contracts traded at price $P_i$. Concentration of volume at a price level pulls VWAP toward it.</li>
+                                    <li><strong>Benchmark VWAP:</strong> The market-wide VWAP over the execution window. This is what the algo tries to match — executing proportionally to the market's natural volume profile.</li>
+                                    <li><strong>Slippage:</strong> The signed difference between your average execution price and the benchmark. Positive slippage (for buys) = you paid more than VWAP = underperformance.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>💡</span> Trading & Economic Intuition</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>Volume Profile Matters:</strong> VWAP algos use historical intraday volume curves (U-shaped for US equities — heavy at open/close, light midday). Deviating from the profile creates tracking error against the benchmark.</li>
+                                    <li><strong>VWAP ≠ Best Execution:</strong> VWAP ignores timing risk. If the stock moves 2% against you during execution, VWAP may say you matched the benchmark perfectly — but you lost 2%. Implementation shortfall captures this; VWAP doesn't.</li>
+                                    <li><strong>Gaming Risk:</strong> VWAP is predictable — other participants know you'll trade proportionally to volume. Predatory algos can front-run VWAP flow, especially in illiquid names. Randomization helps.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>🎯</span> Desk & Interview Application</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>VWAP vs TWAP:</strong> VWAP = trade proportionally to market volume. TWAP = trade evenly over time. VWAP is better for liquid names with predictable volume; TWAP is safer when volume profile is uncertain or manipulated.</li>
+                                    <li><strong>When to Use VWAP:</strong> Best for orders that are small relative to daily volume (&lt;5% ADV), where the PM benchmark is VWAP, and there's no urgency. Not suitable for information-motivated trades or momentum names.</li>
+                                    <li><strong>Interview Favorite:</strong> "You need to buy 2% of ADV in a mid-cap stock. VWAP or IS algo?" — VWAP is fine at 2% participation. But if you have alpha decay (information-motivated), IS with front-loading is better despite higher impact.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Almgren-Chriss -->
+                <div class="equation-pane" id="pane-ac">
+                    <div class="eq-header">
+                        <div class="eq-header-left">
+                            <div class="eq-title-row">
+                                <span class="eq-badge">Optimal Execution</span>
+                                <h3>Almgren-Chriss Optimal Execution Framework</h3>
+                            </div>
+                            <div class="eq-latex-display">$$\min_{x_t} \; \mathbb{E}[\text{Cost}] + \lambda \cdot \text{Var}[\text{Cost}] \qquad \text{Impact:} \; \Delta p = g\!\left(\frac{x_t}{V_t}\right) + h\!\left(\frac{\dot{x}_t}{V_t}\right)$$</div>
+                        </div>
+                        <button class="eq-close-btn" aria-label="Close equation breakdown" onclick="closeEquationDrawer()">✕</button>
+                    </div>
+                    <div class="eq-body-grid">
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>📐</span> Parameter Anatomy</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>$x_t$ (Execution Trajectory):</strong> The number of shares remaining to trade at time $t$. The optimization finds the optimal path from $X$ (total shares) to 0 over the execution window $[0, T]$.</li>
+                                    <li><strong>$g(\cdot)$ (Permanent Impact):</strong> The irreversible price change caused by trading. Moves the efficient price. Depends on cumulative trading relative to volume. Cannot be avoided — only the path matters.</li>
+                                    <li><strong>$h(\cdot)$ (Temporary Impact):</strong> The transient price pressure from demanding immediacy. Depends on the rate of trading $\dot{x}_t$. Can be reduced by trading more slowly — but this increases timing risk.</li>
+                                    <li><strong>$\lambda$ (Risk Aversion):</strong> Controls the trade-off between minimizing expected cost (trade slowly) and minimizing variance (trade quickly). $\lambda = 0$: risk-neutral (TWAP). $\lambda \to \infty$: trade everything immediately.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>💡</span> Trading & Economic Intuition</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>The Urgency Frontier:</strong> Almgren-Chriss produces an efficient frontier: expected cost vs cost variance. Each point corresponds to a different $\lambda$. Aggressive traders sit top-left (high cost, low variance); patient traders sit bottom-right.</li>
+                                    <li><strong>Square-Root Law:</strong> Empirically, permanent impact $\propto \sigma \sqrt{X/V}$ where $X$ is order size and $V$ is daily volume. This means doubling order size increases impact by only ~41%, not 100%. Non-linearity is your friend.</li>
+                                    <li><strong>Alpha Decay:</strong> If you have a trading signal that decays, the optimal trajectory front-loads execution. The faster the signal decays, the more aggressive the initial trading — accepting higher temporary impact to capture the signal before it's gone.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="eq-column">
+                            <div class="eq-col-title"><span>🎯</span> Desk & Interview Application</div>
+                            <div class="eq-col-content">
+                                <ul>
+                                    <li><strong>Optimal Trajectory (Linear Impact):</strong> With linear temporary and permanent impact, the optimal strategy is a deterministic schedule: $x_t = X \cdot \frac{\sinh[\kappa(T-t)]}{\sinh[\kappa T]}$ where $\kappa$ depends on $\lambda$, $\sigma$, and impact parameters.</li>
+                                    <li><strong>Practical Calibration:</strong> Estimate temporary impact from bid-ask spread + short-term reversion. Permanent impact from long-horizon price changes post-trade. $\sigma$ from intraday vol. $\lambda$ from the PM's tracking error budget.</li>
+                                    <li><strong>Interview Question:</strong> "You have 1M shares to sell (5% ADV), and the stock just hit your target price. How aggressive should you be?" — Use IS benchmark with moderate urgency. ~41% impact of full ADV participation. Split over 1–2 days. Front-load if alpha decays.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer">
+        <p>Microstructure Academy — Part of the <a href="../index.html">Market Finance Mastery</a> suite</p>
+    </footer>
+
+    <!-- ========== SCRIPTS ========== -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <script>
+        /* ----------------------------------------
+           ANIMATED BACKGROUND — ORDER FLOW STREAM
+           ---------------------------------------- */
+        (function () {
+            const canvas = document.getElementById('bgCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            let W, H;
+
+            /* --- Streaming ticker tape columns --- */
+            const COLUMNS = [];
+            const NUM_COLUMNS = 24;
+            const TICKS = ['101.25', '101.30', '99.80', '100.05', '98.50', '102.15',
+                           '100.00', '97.75', '103.40', '99.95', '101.50', '100.20',
+                           '98.10', '102.00', '99.60', '100.80', '101.00', '97.90',
+                           'BID', 'ASK', 'MKT', 'LMT', 'STP', 'IOC',
+                           '500', '1.2K', '3K', '200', '800', '5K'];
+
+            /* --- Order book depth bars (left & right side) --- */
+            const DEPTH_BARS = [];
+            const NUM_DEPTH = 12;
+
+            function resize() {
+                W = canvas.width = window.innerWidth;
+                H = canvas.height = window.innerHeight;
+                initColumns();
+                initDepth();
+            }
+
+            function initColumns() {
+                COLUMNS.length = 0;
+                for (let i = 0; i < NUM_COLUMNS; i++) {
+                    COLUMNS.push(createColumn(i));
+                }
+            }
+
+            function createColumn(index) {
+                const x = (W / NUM_COLUMNS) * index + Math.random() * (W / NUM_COLUMNS);
+                return {
+                    x: x,
+                    y: Math.random() * H,
+                    speed: 0.3 + Math.random() * 0.8,
+                    chars: [],
+                    charCount: 3 + Math.floor(Math.random() * 5),
+                    opacity: 0.02 + Math.random() * 0.05,
+                    size: 9 + Math.random() * 4,
+                    spacing: 16 + Math.random() * 8,
+                    phase: Math.random() * Math.PI * 2,
+                    isBid: Math.random() > 0.5
+                };
+            }
+
+            function initDepth() {
+                DEPTH_BARS.length = 0;
+                for (let i = 0; i < NUM_DEPTH; i++) {
+                    DEPTH_BARS.push({
+                        y: (H / NUM_DEPTH) * i + Math.random() * 30,
+                        side: i % 2 === 0 ? 'bid' : 'ask',
+                        width: 40 + Math.random() * 120,
+                        targetWidth: 40 + Math.random() * 120,
+                        opacity: 0.015 + Math.random() * 0.025,
+                        phase: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+
+            window.addEventListener('resize', resize);
+            resize();
+
+            // Give each column random ticks
+            for (const col of COLUMNS) {
+                for (let j = 0; j < col.charCount; j++) {
+                    col.chars.push(TICKS[Math.floor(Math.random() * TICKS.length)]);
+                }
+            }
+
+            let lastTickUpdate = 0;
+
+            function draw(t) {
+                ctx.clearRect(0, 0, W, H);
+
+                // Randomly refresh tick values every ~2 seconds
+                if (t - lastTickUpdate > 2000) {
+                    lastTickUpdate = t;
+                    for (const col of COLUMNS) {
+                        if (Math.random() > 0.6) {
+                            const idx = Math.floor(Math.random() * col.chars.length);
+                            col.chars[idx] = TICKS[Math.floor(Math.random() * TICKS.length)];
+                        }
+                    }
+                    // Shift depth bar targets
+                    for (const bar of DEPTH_BARS) {
+                        if (Math.random() > 0.5) {
+                            bar.targetWidth = 40 + Math.random() * 120;
+                        }
+                    }
+                }
+
+                // --- Draw depth bars (subtle horizontal bars on sides) ---
+                for (const bar of DEPTH_BARS) {
+                    bar.width += (bar.targetWidth - bar.width) * 0.02;
+                    const flicker = 0.6 + 0.4 * Math.sin(t * 0.0008 + bar.phase);
+                    const alpha = bar.opacity * flicker;
+
+                    if (bar.side === 'bid') {
+                        // Left side — green-tinted
+                        const grad = ctx.createLinearGradient(0, bar.y, bar.width, bar.y);
+                        grad.addColorStop(0, `rgba(34, 197, 94, ${alpha * 0.8})`);
+                        grad.addColorStop(1, 'transparent');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(0, bar.y, bar.width, 3);
+                    } else {
+                        // Right side — rose-tinted
+                        const grad = ctx.createLinearGradient(W, bar.y, W - bar.width, bar.y);
+                        grad.addColorStop(0, `rgba(244, 63, 94, ${alpha * 0.8})`);
+                        grad.addColorStop(1, 'transparent');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(W - bar.width, bar.y, bar.width, 3);
+                    }
+                }
+
+                // --- Draw streaming ticker columns ---
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+
+                for (const col of COLUMNS) {
+                    const flicker = 0.5 + 0.5 * Math.sin(t * 0.001 + col.phase);
+                    const color = col.isBid
+                        ? `rgba(34, 197, 94, ${col.opacity * flicker})`
+                        : `rgba(244, 63, 94, ${col.opacity * flicker})`;
+
+                    ctx.font = `500 ${col.size}px 'JetBrains Mono', monospace`;
+                    ctx.fillStyle = color;
+
+                    for (let j = 0; j < col.chars.length; j++) {
+                        const cy = col.y + j * col.spacing;
+                        // Wrap vertically
+                        const wrappedY = ((cy % (H + 100)) + (H + 100)) % (H + 100) - 50;
+                        ctx.fillText(col.chars[j], col.x, wrappedY);
+                    }
+
+                    // Move downward
+                    col.y += col.speed;
+                    if (col.y > H + 100) {
+                        col.y = -col.charCount * col.spacing;
+                    }
+                }
+
+                requestAnimationFrame(draw);
+            }
+
+            requestAnimationFrame(draw);
+        })();
+
+        /* ----------------------------------------
+           EXPANDABLE EQUATION DRAWER CONTROLLER
+           ---------------------------------------- */
+        function renderDrawerMath() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.getElementById('equationDrawer'), {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    throwOnError: false
+                });
+            }
+        }
+
+        function closeEquationDrawer() {
+            const drawer = document.getElementById('equationDrawer');
+            if (drawer) drawer.classList.remove('open');
+            document.querySelectorAll('.concept-card').forEach(c => {
+                c.classList.remove('active');
+                c.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        function toggleEquation(eqKey, targetCard) {
+            const drawer = document.getElementById('equationDrawer');
+            const targetPane = document.getElementById('pane-' + eqKey);
+            if (!drawer || !targetPane) return;
+
+            const isAlreadyActive = targetCard.classList.contains('active');
+
+            if (isAlreadyActive) {
+                closeEquationDrawer();
+                return;
+            }
+
+            // Deactivate all cards
+            document.querySelectorAll('.concept-card').forEach(c => {
+                c.classList.remove('active');
+                c.setAttribute('aria-expanded', 'false');
+            });
+
+            // Hide all panes
+            document.querySelectorAll('.equation-pane').forEach(p => p.classList.remove('active'));
+
+            // Activate chosen card and pane
+            targetCard.classList.add('active');
+            targetCard.setAttribute('aria-expanded', 'true');
+            targetPane.classList.add('active');
+            drawer.classList.add('open');
+
+            // Render math inside newly active pane
+            renderDrawerMath();
+
+            // Smooth scroll into drawer if needed
+            setTimeout(() => {
+                const rect = drawer.getBoundingClientRect();
+                if (rect.top < 0 || rect.bottom > window.innerHeight) {
+                    drawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }, 100);
+        }
+
+        /* ----------------------------------------
+           INITIALIZATION & PROGRESS ON LOAD
+           ---------------------------------------- */
+        document.addEventListener('DOMContentLoaded', function () {
+            // Setup Concept Cards Click & Keyboard Listeners
+            const conceptCards = document.querySelectorAll('.concept-card');
+            conceptCards.forEach(card => {
+                const eqKey = card.getAttribute('data-eq');
+                card.addEventListener('click', function () {
+                    toggleEquation(eqKey, card);
+                });
+                card.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleEquation(eqKey, card);
+                    }
+                });
+            });
+
+            // Initial KaTeX Render for page
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ],
+                    throwOnError: false
+                });
+            }
+
+            // Count completed modules
+            const cards = document.querySelectorAll('.module-card');
+            let completed = 0;
+            cards.forEach(function (card) {
+                const status = card.querySelector('.module-status');
+                if (status && status.classList.contains('complete')) {
+                    completed++;
+                }
+            });
+
+            const total = cards.length;
+            const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+            // Animate progress bar
+            const fill = document.getElementById('progressFill');
+            const label = document.getElementById('progressPercent');
+            if (fill && label) {
+                setTimeout(function () {
+                    fill.style.width = pct + '%';
+                    label.textContent = pct + '%';
+                    if (pct > 0) {
+                        fill.classList.remove('zero');
+                    }
+                }, 400);
+            }
+
+            // Update count
+            const countEl = document.querySelector('.section-header .count');
+            if (countEl) {
+                countEl.textContent = completed + ' / ' + total + ' complete';
+            }
+        });
+    </script>
+</body>
+</html>
+
